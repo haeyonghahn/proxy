@@ -548,3 +548,58 @@ __GOF 디자인 패턴__
 > 프록시라는 개념은 클라이언트 서버라는 큰 개념안에서 자연스럽게 발생할 수 있다. 프록시는 객체안에서의 개념도 있고, 웹 서버에서의 프록시도 있다. 객체안에서 객체로 구현되어있는가, 웹 서버로 구현되어 있는가 처럼 규모의 차이가 있을 뿐 근본적인 역할은 같다.
 
 ### 프록시 패턴 - 예제 코드1
+__테스트 코드에 Lombok 적용하기__    
+테스트 코드에 Lombok을 사용하려면 `build.gradle` 에 테스트에서 lombok을 사용할 수 있도록 의존관계를 추가해야 한다.     
+
+__build.gradle에 추가__   
+```gradle
+dependencies {
+  ...
+  //테스트에서 lombok 사용
+  testCompileOnly 'org.projectlombok:lombok'
+  testAnnotationProcessor 'org.projectlombok:lombok'
+}
+```
+이렇게 해야 테스트 코드에서 `@Slfj4` 같은 애노테이션이 작동한다.   
+
+__프록시 패턴 - 예제 코드 작성__    
+![image](https://github.com/haeyonghahn/proxy/assets/31242766/1280d6a4-da9a-4aef-b783-20c4df0c33bb)    
+
+__Subject 인터페이스__    
+주의: 테스트 코드(src/test)에 위치한다.   
+```java
+package hello.proxy.pureproxy.proxy.code;
+
+public interface Subject {
+    String operation();
+}
+```
+예제에서 `Subject` 인터페이스는 단순히 `operation()` 메서드 하나만 가지고 있다.
+
+__RealSubject__    
+주의: 테스트 코드(src/test)에 위치한다.   
+```java
+package hello.proxy.pureproxy.proxy.code;
+
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
+public class RealSubject implements Subject {
+
+    @Override
+    public String operation() {
+        log.info("실제 객체 호출");
+        sleep(1000);
+        return "data";
+    }
+
+    private void sleep(int millis) {
+        try {
+            Thread.sleep(millis);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+}
+```
+`RealSubject` 는 `Subject` 인터페이스를 구현했다. `operation()` 은 데이터 조회를 시뮬레이션 하기 위해 1초 쉬도록 했다. 예를 들어서 데이터를 DB나 외부에서 조회하는데 1초가 걸린다고 생각하면 된다. 호출할 때 마다 시스템에 큰 부하를 주는 데이터 조회라고 가정하자.
