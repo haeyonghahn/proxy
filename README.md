@@ -8,6 +8,8 @@
   * **[프록시, 프록시 패턴, 데코레이터 패턴 - 소개](#프록시-프록시-패턴-데코레이터-패턴---소개)**
   * **[프록시 패턴 - 예제 코드1](#프록시-패턴---예제-코드1)**
   * **[프록시 패턴 - 예제 코드2](#프록시-패턴---예제-코드2)**
+  * **[데코레이터 패턴 - 예제 코드1](#데코레이터-패턴---예제-코드1)**
+  * **[데코레이터 패턴 - 예제 코드2](#데코레이터-패턴---예제-코드2)**
 
 ## 프록시 패턴과 데코레이터 패턴
 ### 예제 프로젝트 만들기 v1
@@ -757,3 +759,95 @@ __client.execute()을 3번 호출하면 다음과 같이 처리된다.__
 
 __정리__   
 프록시 패턴의 핵심은 `RealSubject` 코드와 클라이언트 코드를 전혀 변경하지 않고, 프록시를 도입해서 접근 제어를 했다는 점이다. 그리고 클라이언트 코드의 변경 없이 자유롭게 프록시를 넣고 뺄 수 있다. 실제 클라이언트 입장에서는 프록시 객체가 주입되었는지, 실제 객체가 주입되었는지 알지 못한다.
+
+### 데코레이터 패턴 - 예제 코드1
+데코레이터 패턴을 이해하기 위한 예제 코드를 작성해보자. 먼저 데코레이터 패턴을 도입하기 전 코드를 아주 단순하게 만들어보자.    
+![image](https://github.com/haeyonghahn/proxy/assets/31242766/e912992c-cba4-4015-9523-06e7475b1dd0)    
+![image](https://github.com/haeyonghahn/proxy/assets/31242766/dadfd21f-6ece-44b5-8380-7cc43ac1eb3b)    
+
+__Component 인터페이스__   
+주의: 테스트 코드(src/test)에 위치한다.   
+```java
+package hello.proxy.pureproxy.decorator.code;
+
+public interface Component {
+    String operation();
+}
+```
+`Component` 인터페이스는 단순히 `String operation()` 메서드를 가진다.   
+
+__RealComponent__   
+주의: 테스트 코드(src/test)에 위치한다.   
+```java
+package hello.proxy.pureproxy.decorator.code;
+
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
+public class RealComponent implements Component {
+
+    @Override
+    public String operation() {
+        log.info("RealComponent 실행");
+        return "data";
+    }
+}
+```
+- `RealComponent` 는 Component 인터페이스를 구현한다.
+- `operation()` : 단순히 로그를 남기고 `"data"` 문자를 반환한다.
+
+__DecoratorPatternClient__   
+주의: 테스트 코드(src/test)에 위치한다.   
+```java
+package hello.proxy.pureproxy.decorator.code;
+
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
+public class DecoratorPatternClient {
+    
+    private Component component;
+    
+    public DecoratorPatternClient(Component component) {
+        this.component = component;
+    }
+    
+    public void execute() {
+        String result = component.operation();
+        log.info("result={}", result);
+    }
+}
+```
+- 클라이언트 코드는 단순히 `Component` 인터페이스를 의존한다.
+- `execute()` 를 실행하면 `component.operation()` 을 호출하고, 그 결과를 출력한다.
+
+__DecoratorPatternTest__   
+```java
+package hello.proxy.pureproxy.decorator;
+
+import hello.proxy.pureproxy.decorator.code.Component;
+import hello.proxy.pureproxy.decorator.code.DecoratorPatternClient;
+import hello.proxy.pureproxy.decorator.code.RealComponent;
+import lombok.extern.slf4j.Slf4j;
+import org.junit.jupiter.api.Test;
+
+@Slf4j
+public class DecoratorPatternTest {
+
+    @Test
+    void noDecorator() {
+        Component realComponent = new RealComponent();
+        DecoratorPatternClient client = new DecoratorPatternClient(realComponent);
+        client.execute();
+    }
+}
+```
+테스트 코드는 `client -> realComponent` 의 의존관계를 설정하고, `client.execute()` 를 호출한다.   
+
+__실행 결과__   
+```
+RealComponent - RealComponent 실행
+DecoratorPatternClient - result=data
+```
+
+### 데코레이터 패턴 - 예제 코드2
