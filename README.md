@@ -11,6 +11,7 @@
   * **[데코레이터 패턴 - 예제 코드1](#데코레이터-패턴---예제-코드1)**
   * **[데코레이터 패턴 - 예제 코드2](#데코레이터-패턴---예제-코드2)**
   * **[데코레이터 패턴 - 예제 코드3](#데코레이터-패턴---예제-코드3)**
+  * **[인터페이스 기반 프록시 - 적용](#인터페이스-기반-프록시---적용)**
 
 ## 프록시 패턴과 데코레이터 패턴
 ### 예제 프로젝트 만들기 v1
@@ -991,3 +992,226 @@ __의도(intent)__
 __정리__   
 프록시를 사용하고 해당 프록시가 접근 제어가 목적이라면 프록시 패턴이고, 새로운 기능을 추가하는 것이 목적이라면 데코레이터 패턴이 된다.
 
+### 인터페이스 기반 프록시 - 적용
+인터페이스와 구현체가 있는 V1 App에 지금까지 학습한 프록시를 도입해서 `LogTrace`를 사용해보자. `프록시를 사용하면 기존 코드를 전혀 수정하지 않고 로그 추적 기능을 도입할 수 있다.`
+
+V1 App의 기본 클래스 의존 관계와 런타임시 객체 인스턴스 의존 관계는 다음과 같다.   
+
+__V1 기본 클래스 의존 관계__   
+![image](https://github.com/haeyonghahn/proxy/assets/31242766/ac3416a2-84e2-4ad9-bdf0-01067875f3f9)    
+
+__V1 런타임 객체 의존 관계__    
+![image](https://github.com/haeyonghahn/proxy/assets/31242766/b345df44-34bd-4f7a-a153-a6d2d656f19e)    
+
+__V1 프록시 의존 관계 추가__   
+![image](https://github.com/haeyonghahn/proxy/assets/31242766/2d7592d7-f0a2-4e27-9965-eed53610118e)   
+`Controller`, `Servic, `Repository` 각각 인터페이스에 맞는 프록시 구현체를 추가한다. (그림에서 리포지토리는 생략했다.)
+
+__V1 프록시 런타임 객체 의존 관계__    
+![image](https://github.com/haeyonghahn/proxy/assets/31242766/b67a9fc2-b1f4-4124-b509-098602ce9915)     
+그리고 애플리케이션 실행 시점에 프록시를 사용하도록 의존 관계를 설정해주어야 한다. 이 부분은 빈을 등록하는 설정 파일을 활용하면 된다. (그림에서 리포지토리는 생략했다.)
+
+그럼 실제 프록시를 코드에 적용해보자.
+
+__OrderRepositoryInterfaceProxy__      
+```java
+package hello.proxy.config.v1_proxy.interface_proxy;
+
+import hello.proxy.app.v1.OrderRepositoryV1;
+import hello.proxy.trace.TraceStatus;
+import hello.proxy.trace.logtrace.LogTrace;
+import lombok.RequiredArgsConstructor;
+
+@RequiredArgsConstructor
+public class OrderRepositoryInterfaceProxy implements OrderRepositoryV1 {
+
+    private final OrderRepositoryV1 target;
+    private final LogTrace logTrace;
+
+    @Override
+    public void save(String itemId) {
+        TraceStatus status = null;
+        try {
+            status = logTrace.begin("OrderRepository.save()");
+            //target 호출
+            target.save(itemId);
+            logTrace.end(status);
+        } catch(Exception e) {
+            logTrace.exception(status, e);
+            throw e;
+        }
+    }
+}
+```
+- 프록시를 만들기 위해 인터페이스를 구현하고 구현한 메서드에 `LogTrace` 를 사용하는 로직을 추가한다. 지금까지는 `OrderRepositoryImpl` 에 이런 로직을 모두 추가해야했다. 프록시를 사용한 덕분에 이 부분을 프록시가 대신 처리해준다. 따라서 `OrderRepositoryImpl` 코드를 변경하지 않아도 된다.
+- `OrderRepositoryV1 target` : 프록시가 실제 호출할 원본 리포지토리의 참조를 가지고 있어야 한다.
+
+__OrderServiceInterfaceProxy__    
+```java
+package hello.proxy.config.v1_proxy.interface_proxy;
+
+import hello.proxy.app.v1.OrderServiceV1;
+import hello.proxy.trace.TraceStatus;
+import hello.proxy.trace.logtrace.LogTrace;
+import lombok.RequiredArgsConstructor;
+
+@RequiredArgsConstructor
+public class OrderServiceInterfaceProxy implements OrderServiceV1 {
+
+    private final OrderServiceV1 target;
+    private final LogTrace logTrace;
+
+    @Override
+    public void orderItem(String itemId) {
+        TraceStatus status = null;
+        try {
+            status = logTrace.begin("OrderService.orderItem()");
+            //target 호출
+            target.orderItem(itemId);
+            logTrace.end(status);
+        } catch(Exception e) {
+            logTrace.exception(status, e);
+            throw e;
+        }
+    }
+}
+```
+
+__OrderControllerInterfaceProxy__   
+```java
+package hello.proxy.config.v1_proxy.interface_proxy;
+
+import hello.proxy.app.v1.OrderControllerV1;
+import hello.proxy.trace.TraceStatus;
+import hello.proxy.trace.logtrace.LogTrace;
+import lombok.RequiredArgsConstructor;
+
+@RequiredArgsConstructor
+public class OrderControllerInterfaceProxy implements OrderControllerV1 {
+
+    private final OrderControllerV1 target;
+    private final LogTrace logTrace;
+
+    @Override
+    public String request(String itemId) {
+        TraceStatus status = null;
+        try {
+            status = logTrace.begin("OrderController.request()");
+            //target 호출
+            String result = target.request(itemId);
+            logTrace.end(status);
+            return result;
+        } catch(Exception e) {
+            logTrace.exception(status, e);
+            throw e;
+        }
+    }
+
+    @Override
+    public String noLog() {
+        return target.noLog();
+    }
+}
+```
+__InterfaceProxyConfig__    
+```java
+package hello.proxy.config.v1_proxy;
+
+import hello.proxy.app.v1.*;
+import hello.proxy.config.v1_proxy.interface_proxy.OrderControllerInterfaceProxy;
+import hello.proxy.config.v1_proxy.interface_proxy.OrderRepositoryInterfaceProxy;
+import hello.proxy.config.v1_proxy.interface_proxy.OrderServiceInterfaceProxy;
+import hello.proxy.trace.logtrace.LogTrace;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+public class InterfaceProxyConfig {
+
+    @Bean
+    public OrderControllerV1 orderControllerV1(LogTrace logTrace) {
+        OrderControllerV1Impl controllerImpl = new OrderControllerV1Impl(orderService(logTrace));
+        return new OrderControllerInterfaceProxy(controllerImpl, logTrace);
+    }
+
+    @Bean
+    public OrderServiceV1 orderService(LogTrace logTrace) {
+        OrderServiceV1Impl serviceImpl = new OrderServiceV1Impl(orderRepository(logTrace));
+        return new OrderServiceInterfaceProxy(serviceImpl, logTrace);
+    }
+
+    @Bean
+    public OrderRepositoryV1 orderRepository(LogTrace logTrace) {
+        OrderRepositoryV1Impl repositoryImpl = new OrderRepositoryV1Impl();
+        return new OrderRepositoryInterfaceProxy(repositoryImpl, logTrace);
+    }
+}
+```
+`LogTrace` 가 아직 스프링 빈으로 등록되어 있지 않은데, 이 부분은 바로 다음에 등록할 것이다.
+
+__V1 프록시 런타임 객체 의존 관계 설정__    
+- 이제 프록시의 런타임 객체 의존 관계를 설정하면 된다. 기존에는 스프링 빈이 `orderControlerV1Impl`, `orderServiceV1Impl` 같은 실제 객체를 반환했다. 하지만 이제는 프록시를 사용해야한다. 따라서 프록시를 생성하고 `프록시를 실제 스프링 빈 대신 등록한다. 실제 객체는 스프링 빈으로 등록하지 않는다.`
+- 프록시는 내부에 실제 객체를 참조하고 있다. 예를 들어서 `OrderServiceInterfaceProxy` 는 내부에 실제 대상 객체인 `OrderServiceV1Impl` 을 가지고 있다.
+- 정리하면 다음과 같은 의존 관계를 가지고 있다.
+  - `proxy -> target`
+  - `orderServiceInterfaceProxy -> orderServiceV1Impl`
+- 스프링 빈으로 실제 객체 대신에 프록시 객체를 등록했기 때문에 앞으로 스프링 빈을 주입 받으면 `실제 객체 대신에 프록시 객체가 주입`된다.
+- 실제 객체가 스프링 빈으로 등록되지 않는다고 해서 사라지는 것은 아니다. 프록시 객체가 실제 객체를 참조하기 때문에 프록시를 통해서 실제 객체를 호출할 수 있다. 쉽게 이야기해서 프록시 객체 안에 실제 객체가 있는 것이다.
+
+__ProxyApplication__    
+```java
+package hello.proxy;
+
+import hello.proxy.config.v1_proxy.InterfaceProxyConfig;
+import hello.proxy.trace.logtrace.LogTrace;
+import hello.proxy.trace.logtrace.ThreadLocalLogTrace;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
+
+//@Import({AppV1Config.class, AppV2Config.class})
+@Import(InterfaceProxyConfig.class)
+@SpringBootApplication(scanBasePackages = "hello.proxy.app")
+public class ProxyApplication {
+
+	public static void main(String[] args) {
+		SpringApplication.run(ProxyApplication.class, args);
+	}
+
+	@Bean
+	public LogTrace logTrace() {
+		return new ThreadLocalLogTrace();
+	}
+}
+```
+- `@Bean` : 먼저 `LogTrace` 스프링 빈 추가를 먼저 해주어야 한다. 이것을 여기에 등록한 이유는 앞으로 사용할 모든 예제에서 함께 사용하기 위해서다.
+- `@Import(InterfaceProxyConfig.class)` : 프록시를 적용한 설정 파일을 사용하자.
+  - //@Import({AppV1Config.class, AppV2Config.class}) 주석 처리하자.
+
+__실행__   
+- http://localhost:8080/v1/request?itemId=hello
+
+__실행 결과 - 로그__    
+```
+--- [nio-8080-exec-3] h.p.trace.logtrace.ThreadLocalLogTrace   : [7f3772f8] OrderController.request()
+--- [nio-8080-exec-3] h.p.trace.logtrace.ThreadLocalLogTrace   : [7f3772f8] |-->OrderService.orderItem()
+--- [nio-8080-exec-3] h.p.trace.logtrace.ThreadLocalLogTrace   : [7f3772f8] |   |-->OrderRepository.save()
+--- [nio-8080-exec-3] h.p.trace.logtrace.ThreadLocalLogTrace   : [7f3772f8] |   |<--OrderRepository.save() time=1001ms
+--- [nio-8080-exec-3] h.p.trace.logtrace.ThreadLocalLogTrace   : [7f3772f8] |<--OrderService.orderItem() time=1007ms
+--- [nio-8080-exec-3] h.p.trace.logtrace.ThreadLocalLogTrace   : [7f3772f8] OrderController.request() time=1014ms
+```
+
+__정리__    
+추가된 요구사항을 다시 확인해보자.    
+
+__추가된 요구사항__    
+- ~~원본 코드를 전혀 수정하지 않고, 로그 추적기를 적용해라.~~
+- ~~특정 메서드는 로그를 출력하지 않는 기능~~
+  - ~~보안상 일부는 로그를 출력하면 안된다.~~
+- 다음과 같은 다양한 케이스에 적용할 수 있어야 한다.
+  - ~~v1 : 인터페이스가 있는 구현 클래스에 적용~~
+  - v2 : 인터페이스가 없는 구체 클래스에 적용
+  - v3 : 컴포넌트 스캔 대상에 기능 적용
+
+프록시와 DI 덕분에 원본 코드를 전혀 수정하지 않고, 로그 추적기를 도입할 수 있었다. 물론 너무 많은 프록시 클래스를 만들어야 하는 단점이 있기는 하다. 이 부분은 나중에 해결하기로 하고, 우선은 v2 - 인터페이스가 없는 구체 클래스에 프록시를 어떻게 적용할 수 있는지 알아보자.
