@@ -1006,7 +1006,7 @@ __V1 런타임 객체 의존 관계__
 
 __V1 프록시 의존 관계 추가__   
 ![image](https://github.com/haeyonghahn/proxy/assets/31242766/2d7592d7-f0a2-4e27-9965-eed53610118e)   
-`Controller`, `Servic, `Repository` 각각 인터페이스에 맞는 프록시 구현체를 추가한다. (그림에서 리포지토리는 생략했다.)
+`Controller`, `Servic`, `Repository` 각각 인터페이스에 맞는 프록시 구현체를 추가한다. (그림에서 리포지토리는 생략했다.)
 
 __V1 프록시 런타임 객체 의존 관계__    
 ![image](https://github.com/haeyonghahn/proxy/assets/31242766/b67a9fc2-b1f4-4124-b509-098602ce9915)     
