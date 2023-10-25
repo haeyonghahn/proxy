@@ -14,6 +14,7 @@
   * **[인터페이스 기반 프록시 - 적용](#인터페이스-기반-프록시---적용)**
   * **[구체 클래스 기반 프록시 - 예제1](#구체-클래스-기반-프록시---예제1)**
   * **[구체 클래스 기반 프록시 - 예제2](#구체-클래스-기반-프록시---예제2)**
+  * **[구체 클래스 기반 프록시 - 적용](#구체-클래스-기반-프록시---적용)**
 
 ## 프록시 패턴과 데코레이터 패턴
 ### 예제 프로젝트 만들기 v1
@@ -1282,3 +1283,244 @@ public class ConcreteProxyTest {
 코드가 단순해서 이해하는데 어려움은 없을 것이다.
 
 ### 구체 클래스 기반 프록시 - 예제2
+__클래스 기반 프록시 도입__   
+지금까지 인터페이스를 기반으로 프록시를 도입했다. 그런데 자바의 다형성은 인터페이스를 구현하든, 아니면 클래스를 상속하든 상위 타입만 맞으면 다형성이 적용된다. 쉽게 이야기해서 인터페이스가 없어도 프록시를 만들수 있다는 뜻이다. 그래서 이번에는 인터페이스가 아니라 클래스를 기반으로 상속을 받아서 프록시를 만들어보겠다.    
+![image](https://github.com/haeyonghahn/proxy/assets/31242766/ab8862b5-9aaf-4bf0-8b9c-842d5e1adc38)    
+![image](https://github.com/haeyonghahn/proxy/assets/31242766/cccf6233-f8aa-4aba-93f1-cfc59a249ea1)   
+
+__TimeProxy__   
+주의: 테스트 코드(src/test)에 위치한다.
+```java
+package hello.proxy.pureproxy.concreteproxy.code;
+
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
+public class TimeProxy extends ConcreteLogic {
+
+	private ConcreteLogic realLogic;
+
+	public TimeProxy(ConcreteLogic realLogic) {
+		this.realLogic = realLogic;
+	}
+
+	@Override
+	public String operation() {
+		log.info("TimeDecorator 실행");
+		long startTime = System.currentTimeMillis();
+
+		String result = realLogic.operation();
+
+		long endTime = System.currentTimeMillis();
+		long resultTime = endTime - startTime;
+		log.info("TimeDecorator 종료 resultTime={}", resultTime);
+		return result;
+	}
+}
+```
+`TimeProxy` 프록시는 시간을 측정하는 부가 기능을 제공한다. 그리고 인터페이스가 아니라 클래스인 `ConcreteLogic` 를 상속 받아서 만든다.
+
+__ConcreteProxyTest - addProxy() 추가__    
+```java
+@Test
+void addProxy() {
+	ConcreteLogic concreteLogic = new ConcreteLogic();
+	TimeProxy timeProxy = new TimeProxy(concreteLogic);
+	ConcreteClient client = new ConcreteClient(timeProxy);
+	client.execute();
+}
+```
+여기서 핵심은 `ConcreteClient` 의 생성자에 `concreteLogic` 이 아니라 `timeProxy` 를 주입하는 부분이다.
+`ConcreteClient` 는 `ConcreteLogic` 을 의존하는데, 다형성에 의해 `ConcreteLogic` 에 `concreteLogic` 도 들어갈 수 있고, `timeProxy` 도 들어갈 수 있다.
+
+__ConcreteLogic에 할당할 수 있는 객체__    
+- `ConcreteLogic` = `concreteLogic` (본인과 같은 타입을 할당)
+- `ConcreteLogic` = `timeProxy` (자식 타입을 할당)
+
+__ConcreteClient 참고__    
+```java
+package hello.proxy.pureproxy.concreteproxy.code;
+
+public class ConcreteClient {
+	private ConcreteLogic concreteLogic;
+
+	public ConcreteClient(ConcreteLogic concreteLogic) {
+		this.concreteLogic = concreteLogic;
+	}
+
+	public void execute() {
+		concreteLogic.operation();
+	}
+}
+```
+__실행 결과__    
+```
+TimeDecorator 실행
+ConcreteLogic 실행
+TimeDecorator 종료 resultTime=1
+```
+실행 결과를 보면 인터페이스가 없어도 클래스 기반의 프록시가 잘 적용된 것을 확인할 수 있다.   
+> 참고   
+> 자바 언어에서 다형성은 인터페이스나 클래스를 구분하지 않고 모두 적용된다. 해당 타입과 그 타입의
+> 하위 타입은 모두 다형성의 대상이 된다. 자바 언어의 너무 기본적인 내용을 이야기했지만, 인터페이스가
+> 없어도 프록시가 가능하다는 것을 확실하게 짚고 넘어갈 필요가 있어서 자세히 설명했다.
+
+### 구체 클래스 기반 프록시 - 적용
+이번에는 앞서 학습한 내용을 기반으로 구체 클래스만 있는 V2 애플리케이션에 프록시 기능을 적용해보자.
+
+__OrderRepositoryConcreteProxy__   
+```java
+package hello.proxy.config.v1_proxy.concrete_proxy;
+
+import hello.proxy.app.v2.OrderRepositoryV2;
+import hello.proxy.trace.TraceStatus;
+import hello.proxy.trace.logtrace.LogTrace;
+
+public class OrderRepositoryConcreteProxy extends OrderRepositoryV2 {
+
+	private final OrderRepositoryV2 target;
+	private final LogTrace logTrace;
+
+	public OrderRepositoryConcreteProxy(OrderRepositoryV2 target, LogTrace logTrace) {
+		this.target = target;
+		this.logTrace = logTrace;
+	}
+
+	@Override
+	public void save(String itemId) {
+		TraceStatus status = null;
+		try {
+			status = logTrace.begin("OrderRepository.save()");
+			//target 호출
+			target.save(itemId);
+			logTrace.end(status);
+		} catch (Exception e) {
+			logTrace.exception(status, e);
+			throw e;
+		}
+	}
+}
+```
+인터페이스가 아닌 `OrderRepositoryV2` 클래스를 상속 받아서 프록시를 만든다.
+
+__클래스 기반 프록시의 단점__    
+- `super(null)` : `OrderServiceV2` : 자바 기본 문법에 의해 자식 클래스를 생성할 때는 항상 `super()` 로 부모 클래스의 생성자를 호출해야 한다. 이 부분을 생략하면 기본 생성자가 호출된다. 그런데 부모 클래스인
+`OrderServiceV2` 는 기본 생성자가 없고, 생성자에서 파라미터 1개를 필수로 받는다. 따라서 파라미터를 넣어서 `super(..)` 를 호출해야 한다.
+- 프록시는 부모 객체의 기능을 사용하지 않기 때문에 `super(null)` 을 입력해도 된다.
+- 인터페이스 기반 프록시는 이런 고민을 하지 않아도 된다.
+
+__OrderServiceV2의 생성자 - 참고__   
+```java
+public OrderServiceV2(OrderRepositoryV2 orderRepository) {
+	this.orderRepository = orderRepository;
+}
+```
+
+__OrderControllerConcreteProxy__   
+```java
+package hello.proxy.config.v1_proxy.concrete_proxy;
+
+import hello.proxy.app.v2.OrderControllerV2;
+import hello.proxy.trace.TraceStatus;
+import hello.proxy.trace.logtrace.LogTrace;
+
+public class OrderControllerConcreteProxy extends OrderControllerV2 {
+
+	private final OrderControllerV2 target;
+	private final LogTrace logTrace;
+
+	public OrderControllerConcreteProxy(OrderControllerV2 target, LogTrace logTrace) {
+		super(null);
+		this.target = target;
+		this.logTrace = logTrace;
+	}
+
+	@Override
+	public String request(String itemId) {
+		TraceStatus status = null;
+		try {
+			status = logTrace.begin("OrderController.request()");
+			//target 호출
+			String result = target.request(itemId);
+			logTrace.end(status);
+			return result;
+		} catch (Exception e) {
+			logTrace.exception(status, e);
+			throw e;
+		}
+	}
+}
+```
+
+__ConcreteProxyConfig__   
+```java
+package hello.proxy.config.v1_proxy;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+import hello.proxy.app.v2.OrderControllerV2;
+import hello.proxy.app.v2.OrderRepositoryV2;
+import hello.proxy.app.v2.OrderServiceV2;
+import hello.proxy.config.v1_proxy.concrete_proxy.OrderControllerConcreteProxy;
+import hello.proxy.config.v1_proxy.concrete_proxy.OrderRepositoryConcreteProxy;
+import hello.proxy.config.v1_proxy.concrete_proxy.OrderServiceConcreteProxy;
+import hello.proxy.trace.logtrace.LogTrace;
+
+@Configuration
+public class ConcreteProxyConfig {
+
+	@Bean
+	public OrderControllerV2 orderControllerV2(LogTrace logTrace) {
+		OrderControllerV2 controllerImpl = new OrderControllerV2(orderServiceV2(logTrace));
+		return new OrderControllerConcreteProxy(controllerImpl, logTrace);
+	}
+
+	@Bean
+	public OrderServiceV2 orderServiceV2(LogTrace logTrace) {
+		OrderServiceV2 serviceImpl = new OrderServiceV2(orderRepositoryV2(logTrace));
+		return new OrderServiceConcreteProxy(serviceImpl, logTrace);
+	}
+
+	@Bean
+	public OrderRepositoryV2 orderRepositoryV2(LogTrace logTrace) {
+		OrderRepositoryV2 repositoryImpl = new OrderRepositoryV2();
+		return new OrderRepositoryConcreteProxy(repositoryImpl, logTrace);
+	}
+}
+```
+인터페이스 대신에 구체 클래스를 기반으로 프록시를 만든다는 것을 제외하고는 기존과 같다.
+
+__ProxyApplication__   
+```java
+package hello.proxy;
+
+import hello.proxy.config.v1_proxy.ConcreteProxyConfig;
+import hello.proxy.trace.logtrace.LogTrace;
+import hello.proxy.trace.logtrace.ThreadLocalLogTrace;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
+
+//@Import({AppV1Config.class, AppV2Config.class})
+//@Import(InterfaceProxyConfig.class)
+@Import(ConcreteProxyConfig.class)
+@SpringBootApplication(scanBasePackages = "hello.proxy.app")
+public class ProxyApplication {
+
+	public static void main(String[] args) {
+		SpringApplication.run(ProxyApplication.class, args);
+	}
+
+	@Bean
+	public LogTrace logTrace() {
+		return new ThreadLocalLogTrace();
+	}
+}
+```
+`@Import(ConcreteProxyConfig.class)` : 설정을 추가하자.
+
+__실행__   
+http://localhost:8080/v2/request?itemId=hello
+
