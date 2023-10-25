@@ -13,6 +13,7 @@
   * **[데코레이터 패턴 - 예제 코드3](#데코레이터-패턴---예제-코드3)**
   * **[인터페이스 기반 프록시 - 적용](#인터페이스-기반-프록시---적용)**
   * **[구체 클래스 기반 프록시 - 예제1](#구체-클래스-기반-프록시---예제1)**
+  * **[구체 클래스 기반 프록시 - 예제2](#구체-클래스-기반-프록시---예제2)**
 
 ## 프록시 패턴과 데코레이터 패턴
 ### 예제 프로젝트 만들기 v1
@@ -1224,3 +1225,60 @@ __추가된 요구사항__
 
 __ConcreteLogic__   
 주의: 테스트 코드(src/test)에 위치한다.    
+```java
+package hello.proxy.pureproxy.concreteproxy.code;
+
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
+public class ConcreteLogic {
+
+	public String operation() {
+		log.info("ConcreteLogic 실행");
+		return "data";
+	}
+}
+```
+`ConcreteLogic`은 인터페이스가 없고, 구체 클래스만 있다. 여기에 프록시를 도입해야 한다.    
+![image](https://github.com/haeyonghahn/proxy/assets/31242766/5cd712c6-da8a-439c-84cb-27ac8a90c279)    
+![image](https://github.com/haeyonghahn/proxy/assets/31242766/5ac7b0b5-07c3-4fae-8194-b6a7d437d481)    
+
+__ConcreteClient__    
+주의: 테스트 코드(src/test)에 위치한다.   
+```java
+package hello.proxy.pureproxy.concreteproxy.code;
+
+public class ConcreteClient {
+	private ConcreteLogic concreteLogic;
+
+	public ConcreteClient(ConcreteLogic concreteLogic) {
+		this.concreteLogic = concreteLogic;
+	}
+
+	public void execute() {
+		concreteLogic.operation();
+	}
+}
+```
+__ConcreteProxyTest__   
+```java
+package hello.proxy.pureproxy.concreteproxy;
+
+import org.junit.jupiter.api.Test;
+
+import hello.proxy.pureproxy.concreteproxy.code.ConcreteClient;
+import hello.proxy.pureproxy.concreteproxy.code.ConcreteLogic;
+
+public class ConcreteProxyTest {
+
+	@Test
+	void noProxy() {
+		ConcreteLogic concreteLogic = new ConcreteLogic();
+		ConcreteClient client = new ConcreteClient(concreteLogic);
+		client.execute();
+	}
+}
+```
+코드가 단순해서 이해하는데 어려움은 없을 것이다.
+
+### 구체 클래스 기반 프록시 - 예제2
